@@ -50,7 +50,19 @@
     $('#randomDexPick').addEventListener('click', () => { const pool = filteredPokemon(); if (pool.length) openPokemonModal(randomItem(pool).id); });
     $$('#dexBrowseTabs .browse-tab').forEach(btn => btn.addEventListener('click', () => { state.dexMode = btn.dataset.mode; renderDexFilters(); renderDex(); }));
     $('#generateParty').addEventListener('click', drawAllSlots);
-    $('#resetDrawHistory').addEventListener('click', () => { state.drawnIds.clear(); saveDrawnIds(); renderParty(); });
+    $('#resetDrawHistory').addEventListener('click', () => {
+  // 뽑기 기록 초기화
+  state.drawnIds.clear();
+  localStorage.removeItem(STORAGE_KEYS.drawn);
+
+  // 현재 뽑힌 파티 슬롯도 전부 초기화
+  state.party = Array(6).fill(null);
+  state.selectedPartySlot = null;
+
+  // 저장값 동기화 및 화면 갱신
+  saveDrawnIds();
+  renderParty();
+});
     $('#saveParty').addEventListener('click', () => { const names = state.party.filter(Boolean).map(p => p.name).join(', '); alert(names ? `현재 파티: ${names}` : '저장할 파티가 없습니다.'); });
     $('#clearFavorites').addEventListener('click', () => { state.favorites.clear(); saveFavorites(); renderFavorites(); renderDex(); });
     $$('[data-close-modal]').forEach(el => el.addEventListener('click', closePokemonModal));
