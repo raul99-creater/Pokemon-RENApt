@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>레니게이드 플레티넘 도감</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark"><span>✦</span></div>
+        <div>
+          <span>레니게이드</span>
+          <strong>플레티넘 도감</strong>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="nav-item active" data-view="dex"><span>📘</span>도감</button>
+        <button class="nav-item" data-view="party"><span>◉</span>파티생성</button>
+        <button class="nav-item" data-view="items"><span>🎒</span>아이템</button>
+        <button class="nav-item" data-view="changes"><span>✦</span>변경점</button>
+        <button class="nav-item" data-view="favorites"><span>★</span>즐겨찾기</button>
+      </nav>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="search-box">
+          <span>⌕</span>
+          <input id="globalSearch" type="search" placeholder="포켓몬 이름, 번호, 지역, 아이템을 검색하세요" autocomplete="off" />
+          <button id="clearSearch">⌫</button>
+        </div>
+      </header>
+
+      <section id="dexView" class="view active">
+        <div class="toolbar">
+          <div>
+            <h1>포켓몬 도감</h1>
+            <p>포켓몬 카드를 누르면 기본 정보, 출현/이벤트, 배우는 기술을 선택해서 확인할 수 있습니다.</p>
+          </div>
+          <button class="primary" id="randomDexPick">랜덤 선택</button>
+        </div>
+        <div class="browse-tabs" id="dexBrowseTabs">
+          <button class="browse-tab active" data-mode="type">타입별 보기</button>
+          <button class="browse-tab" data-mode="location">출현 지역별 보기</button>
+        </div>
+        <div class="chip-row" id="typeFilters"></div>
+        <div class="location-filter-row" id="dexLocationFilterRow">
+          <div class="location-button-grid" id="dexLocationButtons"></div>
+        </div>
+        <section class="dex-grid-panel dex-full">
+          <div class="panel-title"><strong>도감 목록</strong><span id="filteredCount">-</span></div>
+          <div id="pokemonGrid" class="pokemon-grid"></div>
+        </section>
+      </section>
+
+      <section id="partyView" class="view">
+        <div class="toolbar party-title">
+          <div>
+            <h1>파티 생성</h1>
+            <p>타입 제한, 중복 방지, 전설 제외를 직접 설정한 뒤 슬롯별로 최종 진화체를 뽑습니다.</p>
+          </div>
+          <div class="mini-actions">
+            <button class="primary" id="generateParty">전체 뽑기</button>
+            <button class="ghost" id="resetDrawHistory">뽑기 기록 초기화</button>
+            <button class="ghost" id="saveParty">★ 저장</button>
+          </div>
+        </div>
+        <div class="party-layout party-layout-simple">
+          <section class="party-main">
+            <div class="filter-panel">
+              <div class="filter-group">
+                <b>필터</b>
+                <label><input id="noDuplicate" type="checkbox" checked /> 현재 파티 중복 금지</label>
+                <label><input id="lockDrawn" type="checkbox" checked /> 뽑은 포켓몬 재등장 방지</label>
+                <label><input id="excludeLegend" type="checkbox" checked /> 전설급 제외</label>
+                <label><input id="onlyObtainable" type="checkbox" /> 직접 출현/선물 우선</label>
+                <label><input id="finalOnly" type="checkbox" checked disabled /> 최종 진화체만</label>
+              </div>
+              <div class="filter-group type-challenge-control">
+                <b>타입 제한</b>
+                <select id="partyTypeSelect"></select>
+              </div>
+            </div>
+            <div class="panel-title"><strong>슬롯별 파티 뽑기</strong><span>선택 조건 적용</span></div>
+            <div id="partySlots" class="party-slots vertical-slots"></div>
+          </section>
+          <aside id="partyGuide" class="analysis-panel"></aside>
+        </div>
+      </section>
+
+      <section id="itemsView" class="view">
+        <div class="toolbar">
+          <div>
+            <h1>아이템</h1>
+            <p>스토리 진행 중 얻을 수 있는 순서대로 아이템을 정리했습니다. 카드를 누르면 획득 위치와 방법을 볼 수 있습니다.</p>
+          </div>
+        </div>
+        <div class="browse-tabs item-tabs" id="itemCategoryTabs"></div>
+        <section class="dex-grid-panel">
+          <div class="panel-title"><strong>아이템 목록</strong><span id="itemCount">-</span></div>
+          <div id="itemGrid" class="item-grid"></div>
+        </section>
+      </section>
+
+      <section id="changesView" class="view">
+        <div class="toolbar">
+          <div>
+            <h1>변경점</h1>
+            <p>레니게이드 플레티넘에서 달라진 내용을 카테고리별 긴 글 카드로 정리했습니다.</p>
+          </div>
+        </div>
+        <div class="browse-tabs change-tabs" id="changeCategoryTabs"></div>
+        <section class="dex-grid-panel">
+          <div class="panel-title"><strong>변경점 목록</strong><span id="changeCount">-</span></div>
+          <div id="changeList" class="change-list"></div>
+        </section>
+      </section>
+
+      <section id="favoritesView" class="view">
+        <div class="toolbar">
+          <div>
+            <h1>즐겨찾기</h1>
+            <p>즐겨찾기는 브라우저 localStorage에 저장됩니다.</p>
+          </div>
+          <button class="ghost" id="clearFavorites">전체 삭제</button>
+        </div>
+        <div id="favoritesGrid" class="pokemon-grid favorite-grid"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="pokemonModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="modal-close" data-close-modal>×</button>
+      <div id="modalBody"></div>
+    </section>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
