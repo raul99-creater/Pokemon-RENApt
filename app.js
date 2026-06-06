@@ -1,6 +1,13 @@
 (() => {
   const DATA = window.RP_DATA || { pokemons: [], locations: [], encounters: [], items: [], changes: [], meta: {}, storyOrder: [] };
   const TYPES = ['전체','노말','불꽃','물','풀','전기','얼음','격투','독','땅','비행','에스퍼','벌레','바위','고스트','드래곤','악','강철','페어리'];
+  const GENERATIONS = [
+    { value: '전체', label: '전체 세대', min: 1, max: 493 },
+    { value: '1', label: '1세대 · 관동', min: 1, max: 151 },
+    { value: '2', label: '2세대 · 성도', min: 152, max: 251 },
+    { value: '3', label: '3세대 · 호연', min: 252, max: 386 },
+    { value: '4', label: '4세대 · 신오', min: 387, max: 493 }
+  ];
   const LEGENDARY_IDS = new Set([144,145,146,150,151,243,244,245,249,250,251,377,378,379,380,381,382,383,384,385,386,480,481,482,483,484,485,486,487,488,489,490,491,492,493]);
   const STORAGE_KEYS = { favorites: 'rpFavorites', drawn: 'rpDrawnIds' };
   const STORY_ORDER = DATA.storyOrder || [];
@@ -17,7 +24,7 @@
   const state = {
     view: 'dex', search: '', dexMode: 'type', selectedType: '전체', selectedDexLocation: '전체',
     favorites: new Set(JSON.parse(localStorage.getItem(STORAGE_KEYS.favorites) || '[]').map(Number)),
-    party: Array(6).fill(null), partyType: '전체', selectedPartySlot: null,
+    party: Array(6).fill(null), partyType: '전체', partyGeneration: '전체', selectedPartySlot: null,
     drawnIds: new Set(JSON.parse(localStorage.getItem(STORAGE_KEYS.drawn) || '[]').map(Number)),
     modalPokemonId: null, modalLocation: '', modalTab: 'basic',
     itemCategory: '전체', changeCategory: '전체'
@@ -28,6 +35,14 @@
   const esc = (s='') => String(s).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
   const randomItem = arr => arr[Math.floor(Math.random() * arr.length)];
   function unique(arr){ return [...new Set((arr || []).filter(Boolean))]; }
+  function getPokemonGeneration(id){
+    const dexNo = Number(id);
+    const found = GENERATIONS.find(g => g.value !== '전체' && dexNo >= g.min && dexNo <= g.max);
+    return found ? found.value : '전체';
+  }
+  function generationLabel(value){
+    return (GENERATIONS.find(g => g.value === value) || GENERATIONS[0]).label;
+  }
 
   window.RP_swapImage = function(img) {
     const sources = String(img.dataset.sources || '').split('|').filter(Boolean);
@@ -51,18 +66,13 @@
     $$('#dexBrowseTabs .browse-tab').forEach(btn => btn.addEventListener('click', () => { state.dexMode = btn.dataset.mode; renderDexFilters(); renderDex(); }));
     $('#generateParty').addEventListener('click', drawAllSlots);
     $('#resetDrawHistory').addEventListener('click', () => {
-  // 뽑기 기록 초기화
-  state.drawnIds.clear();
-  localStorage.removeItem(STORAGE_KEYS.drawn);
-
-  // 현재 뽑힌 파티 슬롯도 전부 초기화
-  state.party = Array(6).fill(null);
-  state.selectedPartySlot = null;
-
-  // 저장값 동기화 및 화면 갱신
-  saveDrawnIds();
-  renderParty();
-});
+      state.drawnIds.clear();
+      localStorage.removeItem(STORAGE_KEYS.drawn);
+      state.party = Array(6).fill(null);
+      state.selectedPartySlot = null;
+      saveDrawnIds();
+      renderParty();
+    });
     $('#saveParty').addEventListener('click', () => { const names = state.party.filter(Boolean).map(p => p.name).join(', '); alert(names ? `현재 파티: ${names}` : '저장할 파티가 없습니다.'); });
     $('#clearFavorites').addEventListener('click', () => { state.favorites.clear(); saveFavorites(); renderFavorites(); renderDex(); });
     $$('[data-close-modal]').forEach(el => el.addEventListener('click', closePokemonModal));
@@ -280,18 +290,30 @@
   }
 
   function renderPartyControls(){
-    $('#partyTypeSelect').innerHTML = TYPES.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
-    $('#partyTypeSelect').value = state.partyType;
-    $('#partyTypeSelect').addEventListener('change', e => { state.partyType = e.target.value; renderParty(); });
+    const typeSelect = $('#partyTypeSelect');
+    if (typeSelect) {
+      typeSelect.innerHTML = TYPES.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('');
+      typeSelect.value = state.partyType;
+      typeSelect.addEventListener('change', e => { state.partyType = e.target.value; renderParty(); });
+    }
+
+    const generationSelect = $('#partyGenerationSelect');
+    if (generationSelect) {
+      generationSelect.innerHTML = GENERATIONS.map(g => `<option value="${esc(g.value)}">${esc(g.label)}</option>`).join('');
+      generationSelect.value = state.partyGeneration;
+      generationSelect.addEventListener('change', e => { state.partyGeneration = e.target.value; renderParty(); });
+    }
+
     ['noDuplicate','lockDrawn','excludeLegend','onlyObtainable'].forEach(id => { const el=$('#'+id); if(el) el.addEventListener('change', renderParty); });
   }
-  function getPartyFilters(){ return { noDuplicate: $('#noDuplicate')?.checked ?? true, lockDrawn: $('#lockDrawn')?.checked ?? true, excludeLegend: $('#excludeLegend')?.checked ?? true, onlyObtainable: $('#onlyObtainable')?.checked ?? false, type: state.partyType }; }
+  function getPartyFilters(){ return { noDuplicate: $('#noDuplicate')?.checked ?? true, lockDrawn: $('#lockDrawn')?.checked ?? true, excludeLegend: $('#excludeLegend')?.checked ?? true, onlyObtainable: $('#onlyObtainable')?.checked ?? false, type: state.partyType, generation: state.partyGeneration }; }
   function partyPool(){
     const f = getPartyFilters(); const current = new Set(state.party.filter(Boolean).map(p=>p.id));
     return POKEMONS.filter(p => {
       if (!p.isFinalEvolution) return false;
       if (f.excludeLegend && LEGENDARY_IDS.has(p.id)) return false;
       if (f.type !== '전체' && !cleanTypes(p.types).includes(f.type)) return false;
+      if (f.generation !== '전체' && getPokemonGeneration(p.id) !== f.generation) return false;
       if (f.onlyObtainable && !(p.locations || []).length && !getAcquisitionGuide(p).locations.length) return false;
       if (f.noDuplicate && current.has(p.id)) return false;
       if (f.lockDrawn && state.drawnIds.has(p.id)) return false;
@@ -319,9 +341,9 @@
   function renderPartyGuide(){
     const selected = state.selectedPartySlot != null ? state.party[state.selectedPartySlot] : state.party.find(Boolean);
     const poolCount = partyPool().length;
-    if (!selected){ $('#partyGuide').innerHTML = `<h3>획득 경로</h3><div class="empty">왼쪽 슬롯에서 포켓몬을 뽑으면 진화 전 포켓몬의 포획/선물/특수 이벤트 방법까지 표시됩니다.</div><div class="analysis-section"><b>현재 후보</b><p>${poolCount}마리 · 최종 진화체 기준</p><p class="muted-text">타입 제한: ${esc(state.partyType)} / 뽑기 잠금: ${state.drawnIds.size}마리</p></div>`; return; }
+    if (!selected){ $('#partyGuide').innerHTML = `<h3>획득 경로</h3><div class="empty">왼쪽 슬롯에서 포켓몬을 뽑으면 진화 전 포켓몬의 포획/선물/특수 이벤트 방법까지 표시됩니다.</div><div class="analysis-section"><b>현재 후보</b><p>${poolCount}마리 · 최종 진화체 기준</p><p class="muted-text">타입 제한: ${esc(state.partyType)} / 세대 제한: ${esc(generationLabel(state.partyGeneration))} / 뽑기 잠금: ${state.drawnIds.size}마리</p></div>`; return; }
     const guide = getAcquisitionGuide(selected);
-    $('#partyGuide').innerHTML = `<h3>획득 경로</h3>${guidePanelHtml(selected, guide)}<div class="analysis-section"><b>현재 후보</b><p>${poolCount}마리 · 최종 진화체 기준</p><p class="muted-text">초기화 전 재등장 방지에 걸린 포켓몬: ${state.drawnIds.size}마리</p></div>`;
+    $('#partyGuide').innerHTML = `<h3>획득 경로</h3>${guidePanelHtml(selected, guide)}<div class="analysis-section"><b>현재 후보</b><p>${poolCount}마리 · 최종 진화체 기준</p><p class="muted-text">세대 제한: ${esc(generationLabel(state.partyGeneration))} / 초기화 전 재등장 방지에 걸린 포켓몬: ${state.drawnIds.size}마리</p></div>`;
     $$('.guide-detail-btn').forEach(btn => btn.addEventListener('click', () => openPokemonModal(Number(btn.dataset.id))));
   }
   function guidePanelHtml(p, guide){ return `<div class="party-guide-card"><div class="guide-head">${pokemonImage(p)}<span><b>${esc(p.name)}</b><small>${cleanTypes(p.types).map(typeBadge).join('')}</small></span></div>${guideHtml(guide)}<button class="ghost guide-detail-btn" data-id="${p.id}">도감 팝업 열기</button></div>`; }
