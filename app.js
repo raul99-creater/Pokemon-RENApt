@@ -119,7 +119,7 @@
       const hay = `${p.id} ${p.num} ${p.name} ${cleanTypes(p.types).join(' ')} ${locText} ${moveText}`.toLowerCase();
       if (q && !hay.includes(q)) return false;
       if (state.dexMode === 'type' && state.selectedType !== '전체' && !cleanTypes(p.types).includes(state.selectedType)) return false;
-      if (state.dexMode === 'location' && state.selectedDexLocation !== '전체' && !(p.locations || []).some(l => l.location === state.selectedDexLocation && !isSpecialEvent(l))) return false;
+      if (state.dexMode === 'location' && state.selectedDexLocation !== '전체' && !(p.locations || []).some(l => cleanEventLocation(l.location) === state.selectedDexLocation)) return false;
       return true;
     });
   }
